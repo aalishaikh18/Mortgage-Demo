@@ -18,6 +18,15 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 200px;
+            height: auto;
+            margin-bottom: 10px;
+        }
         .form-group {
             margin-bottom: 20px;
         }
@@ -57,18 +66,58 @@
         h1 {
             color: #0066cc;
             margin-bottom: 30px;
+            text-align: center;
+        }
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loader-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0066cc;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Status-specific styles */
+        .status-DIP { background-color: #e3f2fd; color: #0d47a1; }
+        .status-FMA { background-color: #fff3e0; color: #e65100; }
+        .status-Verification { background-color: #f3e5f5; color: #7b1fa2; }
+        .status-Valuation { background-color: #e8f5e9; color: #2e7d32; }
+        .status-Offer { background-color: #e0f2f1; color: #00695c; }
+        .status-Conveyancing { background-color: #f3e5f5; color: #6a1b9a; }
+        .status-Booked { background-color: #fff3e0; color: #e65100; }
+        .status-Complete { background-color: #e8f5e9; color: #1b5e20; }
+
+        #currentStatus {
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="logo-container">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgODAiPjxwYXRoIGZpbGw9IiMwMDY2Y2MiIGQ9Ik00NS4yIDEwLjZjLTEuOCAwLTMuMyAxLjUtMy4zIDMuM3YyNi4yYzAgMS44IDEuNSAzLjMgMy4zIDMuM2gxNDkuNmMxLjggMCAzLjMtMS41IDMuMy0zLjNWMTMuOWMwLTEuOC0xLjUtMy4zLTMuMy0zLjNINDUuMnptMCA1aDE0OS42djIzLjhINDUuMlYxNS42eiIvPjx0ZXh0IHg9IjYwIiB5PSIzMiIgZmlsbD0iIzAwNjZjYyIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+TkZpbmFuY2lhbCBNb3J0Z2FnZXM8L3RleHQ+PHBhdGggZmlsbD0iIzAwNjZjYyIgZD0iTTQ1IDQ1aDE1MHYyNUg0NXoiLz48dGV4dCB4PSI3MCIgeT0iNjIiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMCI+U2VjdXJpbmcgeW91ciBkcmVhbSBob21lPC90ZXh0Pjwvc3ZnPg==" 
+                 alt="NFinancial Mortgages Logo" 
+                 class="logo">
+        </div>
         <h1>Mortgage Application</h1>
         <form id="mortgageForm">
             <div class="form-group">
                 <label for="name">Full Name:</label>
                 <input type="text" id="name" required placeholder="Enter your full name">
             </div>
-
             <div class="form-group">
                 <label for="salary">Annual Salary:</label>
                 <input type="number" id="salary" required placeholder="Enter your annual salary">
@@ -84,23 +133,101 @@
             <div class="form-group">
                 <label for="status">Status:</label>
                 <select id="status" disabled>
-                    <option value="New">New</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
+                    <option value="Decision in Principle">Decision in Principle</option>
+                    <option value="Full Mortgage Application">Full Mortgage Application</option>
+                    <option value="Verification & Underwriting">Verification & Underwriting</option>
+                    <option value="Valuation">Valuation</option>
+                    <option value="Offer">Offer</option>
+                    <option value="Conveyancing">Conveyancing</option>
+                    <option value="Booked">Booked</option>
+                    <option value="Complete">Complete</option>
                 </select>
             </div>
             <button type="submit">Submit Application</button>
         </form>
+        
+        <div class="loader" id="loader">
+            <div class="loader-spinner"></div>
+            <p>Processing your application...</p>
+        </div>
+
         <div class="status-display">
             <h3>Application Status: <span id="currentStatus">Not Submitted</span></h3>
         </div>
     </div>
 
     <script>
-        // Configuration - Replace these values
         const SALESFORCE_INSTANCE = 'https://nfinancial20250116092207779.my.salesforce.com';
-        const ACCESS_TOKEN = '00Da3000002CKpr!AQEAQPv6AvVjkingkDsXjb3tdvH1HqBwFB4Sm_Ezzi2OW6U8U6UGFpbJ2EDYYE9Kvl2SW7Jnvt1eGxp4VSt86qB4UNK4xr.h';
+        const ACCESS_TOKEN = '00Da3000002CKpr!AQEAQPv6AvVjkingkDsXjb3tdvH1HqBwFB4Sm_Ezzi2OW6U8U6UGFpbJ2EDYYE9Kvl2SW7Jnvt1eGxp4VSt86qB4UNK4xr.h'; // Your access token here
+
+        function updateStatusDisplay(status) {
+            const statusElement = document.getElementById('currentStatus');
+            statusElement.textContent = status;
+            
+            // Remove all existing status classes
+            statusElement.classList.remove(
+                'status-DIP', 
+                'status-FMA', 
+                'status-Verification',
+                'status-Valuation',
+                'status-Offer',
+                'status-Conveyancing',
+                'status-Booked',
+                'status-Complete'
+            );
+            
+            // Add appropriate status class
+            switch(status) {
+                case 'Decision in Principle':
+                    statusElement.classList.add('status-DIP');
+                    break;
+                case 'Full Mortgage Application':
+                    statusElement.classList.add('status-FMA');
+                    break;
+                case 'Verification & Underwriting':
+                    statusElement.classList.add('status-Verification');
+                    break;
+                case 'Valuation':
+                    statusElement.classList.add('status-Valuation');
+                    break;
+                case 'Offer':
+                    statusElement.classList.add('status-Offer');
+                    break;
+                case 'Conveyancing':
+                    statusElement.classList.add('status-Conveyancing');
+                    break;
+                case 'Booked':
+                    statusElement.classList.add('status-Booked');
+                    break;
+                case 'Complete':
+                    statusElement.classList.add('status-Complete');
+                    break;
+            }
+
+            // Update select dropdown
+            document.getElementById('status').value = status;
+        }
+
+        async function pollLoanStatus(loanId) {
+            try {
+                const response = await fetch(
+                    `${SALESFORCE_INSTANCE}/services/data/v57.0/sobjects/LLC_BI__Loan__c/${loanId}?fields=LLC_BI__Stage__c`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+                const result = await response.json();
+                if (result.LLC_BI__Stage__c) {
+                    updateStatusDisplay(result.LLC_BI__Stage__c);
+                }
+                return result.LLC_BI__Stage__c;
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }
 
         async function createRecords(formData) {
             const compositeRequest = {
@@ -122,7 +249,7 @@
                             Name: formData.name,
                             LLC_BI__Account__c: '@{newAccount.id}',
                             LLC_BI__Product_Line__c: 'Mortgage',
-			    LLC_BI__Product_Type__c: 'Residential',
+                            LLC_BI__Product_Type__c: 'Residential',
                             Transaction_Type__c: 'Purchase',
                             Salary__c: formData.salary,
                             LLC_BI__Amount__c: formData.amount,
@@ -138,7 +265,8 @@
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify(compositeRequest)
                 });
@@ -159,9 +287,15 @@
             }
         }
 
-        // Form submission handler
         document.getElementById('mortgageForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const submitButton = document.querySelector('button[type="submit"]');
+            const loader = document.getElementById('loader');
+            
+            // Disable submit button and show loader
+            submitButton.disabled = true;
+            loader.style.display = 'block';
             
             const formData = {
                 name: document.getElementById('name').value,
@@ -173,12 +307,18 @@
             try {
                 const result = await createRecords(formData);
                 if (result.success) {
-                    document.getElementById('currentStatus').textContent = 'New';
-                    document.getElementById('status').value = 'New';
+                    updateStatusDisplay('Decision in Principle');
                     alert('Application submitted successfully!');
+                    
+                    // Start polling for status updates
+                    setInterval(() => pollLoanStatus(result.loanId), 5000);
                 }
             } catch (error) {
                 alert('An error occurred while submitting the application.');
+            } finally {
+                // Re-enable submit button and hide loader
+                submitButton.disabled = false;
+                loader.style.display = 'none';
             }
         });
     </script>
