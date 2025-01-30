@@ -344,20 +344,42 @@
     // Update progress bar
     updateProgressBar(status);
 }
-
 function updateProgressBar(status) {
     const steps = document.querySelectorAll('.progress-step');
-    const statusIndex = Array.from(document.getElementById('status').options)
-        .findIndex(option => option.value === status);
+    const statusOptions = Array.from(document.getElementById('status').options)
+        .map(option => option.value);
+    const currentIndex = statusOptions.indexOf(status);
 
+    // Update progress bar steps
     steps.forEach((step, index) => {
         step.classList.remove('active', 'completed');
-        if (index < statusIndex) {
+        
+        // Get step's status from data attribute
+        const stepStatus = step.getAttribute('data-step');
+        const stepIndex = statusOptions.indexOf(stepStatus);
+
+        if (stepIndex < currentIndex) {
+            // Previous steps should be marked as completed
             step.classList.add('completed');
-        } else if (index === statusIndex) {
+        } else if (stepIndex === currentIndex) {
+            // Current step should be marked as active
             step.classList.add('active');
         }
+
+        // Update the line color between steps by modifying the ::before pseudo-element
+        if (stepIndex <= currentIndex) {
+            step.style.borderColor = '#0066cc';
+        } else {
+            step.style.borderColor = '#ddd';
+        }
     });
+
+    // Update the progress line
+    const progressLine = document.querySelector('.progress-steps::before');
+    if (progressLine) {
+        const progress = ((currentIndex + 1) / steps.length) * 100;
+        progressLine.style.background = `linear-gradient(to right, #0066cc ${progress}%, #ddd ${progress}%)`;
+    }
 }
 
         async function pollLoanStatus(loanId) {
