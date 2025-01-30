@@ -291,51 +291,228 @@
         </div>
     </div>
 
-    <script>
+     <script>
         const SALESFORCE_INSTANCE = 'https://nfinancial20250116092207779.my.salesforce.com';
         const ACCESS_TOKEN = '00Da3000002CKpr!AQEAQPv6AvVjkingkDsXjb3tdvH1HqBwFB4Sm_Ezzi2OW6U8U6UGFpbJ2EDYYE9Kvl2SW7Jnvt1eGxp4VSt86qB4UNK4xr.h';
         
-        // In-memory variable to store the current loan ID
         let currentLoanId = null;
         let pollingInterval = null;
 
-        function updateProgressBar(status) {
+        async function createRecords(formData) {
             try {
-                const steps = document.querySelectorAll('.progress-step');
-                const statusIndex = Array.from(document.getElementById('status').options)
-                    .findIndex(option => option.value === status);
+                const compositeRequest = {
+                    allOrNone: true,
+                    compositeRequest: [
+                        {
+                            method: 'POST',
+                            url: '/services/data/v57.0/sobjects/Account',
+                            referenceId: 'newAccount',
+                            body: {
+                                Name: formData.name
+                            }
+                        },
+                        {
+                            method: 'POST',
+                            url: '/services/data/v57.0/sobjects/LLC_BI__Loan__c',
+                            referenceId: 'newLoan',
+                            body: {
+                                Name: formData.name,
+                                LLC_BI__Account__c: '@{newAccount.id}',
+                                LLC_BI__Product_Line__c: 'Mortgage',
+                                LLC_BI__Product_Type__c: 'Residential',
+                                Transaction_Type__c: 'Purchase',
+                                Salary__c: parseFloat(formData.salary),
+                                LLC_BI__Amount__c: parseFloat(formData.amount),
+                                Dependants__c: parseInt(formData.dependants),
+                                LLC_BI__Stage__c: 'Decision in Principle'
+                            }
+                        }
+                    ]
+                };
 
-                steps.forEach((step, index) => {
-                    step.classList.remove('active', 'completed');
-                    if (index < statusIndex) {
-                        step.classList.add('completed');
-                    } else if (index === statusIndex) {
-                        step.classList.add('active');
-                    }
+                const response = await fetch(`${SALESFORCE_INSTANCE}/services/data/v57.0/composite`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(compositeRequest)
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Salesforce Response:', result);
+                
+                if (result.compositeResponse && 
+                    result.compositeResponse.every(resp => resp.httpStatusCode === 201)) {
+                    return {
+                        success: true,
+                        loanId: result.compositeResponse[1].body.id
+                    };
+                } else {
+                    throw new Error('Failed to create records in Salesforce');
+                }
             } catch (error) {
-                console.error('Error updating progress bar:', error);
+                console.error('Error in createRecords:', error);
+                throw error;
             }
         }
 
-        function updateStatusDisplay(status) {
+        async function pollLoanStatus(loanId) {
             try {
-                const statusElement = document.getElementById('currentStatus');
-                statusElement.textContent = status;
-                
-                // Remove all existing status classes
-                statusElement.classList.remove(
-                    'status-DIP', 
-                    'status-FMA', 
-                    'status-Verification',
-                    'status-Valuation',
-                    'status-Offer',
-                    'status-Conveyancing',
-                    'status-Booked',
-                    'status-Complete'
+                const response = await fetch(
+                    `${SALESFORCE_INSTANCE}/services/data/v57.0/sobjects/LLC_BI__Loan__c/${loanId}?fields=LLC_BI__Stage__c`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                            'Accept': 'application/json'
+                        }
+                    }
                 );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Poll Status Response:', result);
                 
-                // Add appropriate status class
-                switch(status) {
-                    case 'Decision in Principle':
-                        statusElement.classList.add('
+                if (result.LLC_BI__Stage__c) {
+                    updateStatusDisplay(result.LLC_BI__Stage__c);
+                }
+                return result.LLC_BI__Stage__c;
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }
+
+        function updateProgressBar(status) {
+            const steps = document.querySelectorAll('.progress-step');
+            const statusIndex = Array.from(document.getElementById('status').options)
+                .findIndex(option => option.value === status);
+
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index < statusIndex) {
+                    step.classList.add('completed');
+                } else if (index === statusIndex) {
+                    step.classList.add('active');
+                }
+            });
+        }
+
+        function updateStatusDisplay(status) {
+            const statusElement = document.getElementById('currentStatus');
+            statusElement.textContent = status;
+            
+            statusElement.classList.remove(
+                'status-DIP', 
+                'status-FMA', 
+                'status-Verification',
+                'status-Valuation',
+                'status-Offer',
+                'status-Conveyancing',
+                'status-Booked',
+                'status-Complete'
+            );
+            
+            switch(status) {
+                case 'Decision in Principle':
+                    statusElement.classList.add('status-DIP');
+                    break;
+                case 'Full Mortgage Application':
+                    statusElement.classList.add('status-FMA');
+                    break;
+                case 'Verification & Underwriting':
+                    statusElement.classList.add('status-Verification');
+                    break;
+                case 'Valuation':
+                    statusElement.classList.add('status-Valuation');
+                    break;
+                case 'Offer':
+                    statusElement.classList.add('status-Offer');
+                    break;
+                case 'Conveyancing':
+                    statusElement.classList.add('status-Conveyancing');
+                    break;
+                case 'Booked':
+                    statusElement.classList.add('status-Booked');
+                    break;
+                case 'Complete':
+                    statusElement.classList.add('status-Complete');
+                    break;
+            }
+
+            document.getElementById('status').value = status;
+            updateProgressBar(status);
+        }
+
+        document.getElementById('mortgageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = document.querySelector('button[type="submit"]');
+            const loader = document.getElementById('loader');
+            
+            submitButton.disabled = true;
+            loader.style.display = 'block';
+            
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                salary: document.getElementById('salary').value,
+                amount: document.getElementById('amount').value,
+                dependants: document.getElementById('dependants').value
+            };
+
+            // Validate form data
+            if (!formData.name || !formData.salary || !formData.amount || formData.dependants === '') {
+                alert('Please fill in all required fields');
+                submitButton.disabled = false;
+                loader.style.display = 'none';
+                return;
+            }
+
+            try {
+                const result = await createRecords(formData);
+                if (result.success) {
+                    currentLoanId = result.loanId;
+                    updateStatusDisplay('Decision in Principle');
+                    
+                    // Clear any existing interval
+                    if (pollingInterval) {
+                        clearInterval(pollingInterval);
+                    }
+                    
+                    // Start polling
+                    pollingInterval = setInterval(() => {
+                        if (currentLoanId) {
+                            pollLoanStatus(currentLoanId);
+                        }
+                    }, 5000);
+
+                    alert('Application submitted successfully!');
+                    
+                    // Don't reset the form on successful submission
+                }
+            } catch (error) {
+                console.error('Submission error:', error);
+                alert('An error occurred while submitting the application. Please try again.');
+            } finally {
+                submitButton.disabled = false;
+                loader.style.display = 'none';
+            }
+        });
+
+        // Cleanup handlers
+        window.addEventListener('beforeunload', () => {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        });
+    </script>
+</body>
+</html>
