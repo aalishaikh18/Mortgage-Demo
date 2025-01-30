@@ -294,53 +294,71 @@
         const SALESFORCE_INSTANCE = 'https://nfinancial20250116092207779.my.salesforce.com';
         const ACCESS_TOKEN = '00Da3000002CKpr!AQEAQEuYtTK.eAO3j7rAVDkL0UK2LyT919f9LkmaI2XDgJ0ZljYW1rtD.37CuQ6_zgm9gNlmMacJ3CxhzczYm1yp05kDkJb8'; // Your access token here
 
-        function updateStatusDisplay(status) {
-            const statusElement = document.getElementById('currentStatus');
-            statusElement.textContent = status;
-            
-            // Remove all existing status classes
-            statusElement.classList.remove(
-                'status-DIP', 
-                'status-FMA', 
-                'status-Verification',
-                'status-Valuation',
-                'status-Offer',
-                'status-Conveyancing',
-                'status-Booked',
-                'status-Complete'
-            );
-            
-            // Add appropriate status class
-            switch(status) {
-                case 'Decision in Principle':
-                    statusElement.classList.add('status-DIP');
-                    break;
-                case 'Full Mortgage Application':
-                    statusElement.classList.add('status-FMA');
-                    break;
-                case 'Verification & Underwriting':
-                    statusElement.classList.add('status-Verification');
-                    break;
-                case 'Valuation':
-                    statusElement.classList.add('status-Valuation');
-                    break;
-                case 'Offer':
-                    statusElement.classList.add('status-Offer');
-                    break;
-                case 'Conveyancing':
-                    statusElement.classList.add('status-Conveyancing');
-                    break;
-                case 'Booked':
-                    statusElement.classList.add('status-Booked');
-                    break;
-                case 'Complete':
-                    statusElement.classList.add('status-Complete');
-                    break;
-            }
+       function updateStatusDisplay(status) {
+    const statusElement = document.getElementById('currentStatus');
+    statusElement.textContent = status;
+    
+    // Remove all existing status classes
+    statusElement.classList.remove(
+        'status-DIP', 
+        'status-FMA', 
+        'status-Verification',
+        'status-Valuation',
+        'status-Offer',
+        'status-Conveyancing',
+        'status-Booked',
+        'status-Complete'
+    );
+    
+    // Add appropriate status class
+    switch(status) {
+        case 'Decision in Principle':
+            statusElement.classList.add('status-DIP');
+            break;
+        case 'Full Mortgage Application':
+            statusElement.classList.add('status-FMA');
+            break;
+        case 'Verification & Underwriting':
+            statusElement.classList.add('status-Verification');
+            break;
+        case 'Valuation':
+            statusElement.classList.add('status-Valuation');
+            break;
+        case 'Offer':
+            statusElement.classList.add('status-Offer');
+            break;
+        case 'Conveyancing':
+            statusElement.classList.add('status-Conveyancing');
+            break;
+        case 'Booked':
+            statusElement.classList.add('status-Booked');
+            break;
+        case 'Complete':
+            statusElement.classList.add('status-Complete');
+            break;
+    }
 
-            // Update select dropdown
-            document.getElementById('status').value = status;
+    // Update select dropdown
+    document.getElementById('status').value = status;
+    
+    // Update progress bar
+    updateProgressBar(status);
+}
+
+function updateProgressBar(status) {
+    const steps = document.querySelectorAll('.progress-step');
+    const statusIndex = Array.from(document.getElementById('status').options)
+        .findIndex(option => option.value === status);
+
+    steps.forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        if (index < statusIndex) {
+            step.classList.add('completed');
+        } else if (index === statusIndex) {
+            step.classList.add('active');
         }
+    });
+}
 
         async function pollLoanStatus(loanId) {
             try {
